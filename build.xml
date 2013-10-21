@@ -1,0 +1,44 @@
+<?xml version="1.0" ?> 
+<project name="knxExt" default="pod">
+
+	<path id="compile.classpath">
+	</path>
+	
+	<property environment="env"/>
+	
+	<condition property="fan_home" value="${env.FAN_HOME}" else="H:/rr/skyspark-2.0.7">
+	    <isset property="env.FAN_HOME" />
+	</condition>
+	
+	<target name="init" depends="clean">
+		<mkdir dir="bin"/>
+	</target>
+	
+	<ant id="driver" antfile="C:/Users/meme/workspace/KNX/build.xml" target="jar" dir="C:/Users/meme/workspace/KNX/"/>
+	
+	<target name="compile" depends="init" >
+		<property name="version_info" value= "&quot;j2version&quot;:      &quot;1." />
+		<!-- replace file="build.fan" token="&quot;j2version&quot;:      &quot;1.0&quot;" value="${version_info}${env.BUILD_NUMBER}&quot;"/-->
+		
+		<java jar="${fan_home}/lib/java/sys.jar" fork="true" dir="C:/Users/meme/workspace/KNX">
+			<env key="FAN_HOME" value="${fan_home}"/>
+			<arg value="build.fan"/>
+		</java>
+		<java jar="${fan_home}/lib/java/sys.jar" fork="true" dir=".">
+			<env key="FAN_HOME" value="${fan_home}"/>
+			<arg value="build.fan"/>
+		</java>
+	</target>
+	
+	<target name="pod" depends="compile">
+		<copy file="${fan_home}/lib/fan/knxExt.pod" todir="bin/lib/fan"/>
+		<copy file="${fan_home}/lib/fan/knx.pod" todir="bin/lib/fan"/>
+		<zip destfile="bin/knxExt.zip" basedir="bin"/>
+		<delete dir="bin/lib"/>
+	</target>
+	
+	<target name="clean">
+		<delete dir="bin" />
+	</target>
+	
+</project>
