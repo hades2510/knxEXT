@@ -66,13 +66,24 @@ class KnxConn : Conn
     { 
       Uri ukey := Uri.fromStr((Str)key)
       
+      log.info(key)
+      
       if( ukey.name() == "Project.xml" )
       {    
         XElem projRoot := XmlLib.xmlRead( (Str)val )
-        Str projId := projRoot.elem("Project").elem("ProjectInformation").attr("ProjectId").val
+        Str? projId := projRoot.elem("Project").elem("ProjectInformation").attr("ProjectId").val
+        
+        //different kind of project, get the id using a different path
+        if( projId == null || projId == "0" )
+        {
+          projId = projRoot.elem("Project").attr("Id").val
+        }
+        
+        log.info("Project id: "+projId)
+        
         Str projFileParent := ukey.parent().toStr()
         //path for project file
-        Str projFilePath := projFileParent+projId+".xml"
+        Str projFilePath := projFileParent+"0.xml"
         //parse it :)
         Str projXml := xmls[projFilePath]
         parseXml( projXml )
@@ -149,7 +160,14 @@ class KnxConn : Conn
           nLine.each |point|
           {
             XElem nPoint := (XElem)point
-            XAttr pointAddress := nPoint.attr("Address")
+            XAttr? pointAddress := nPoint.attr("Address", false)
+            
+            //no address for this point, it may just be present in the project
+            //but it's not accessible, like a power source
+            if( pointAddress == null )
+            {
+              return
+            }
             
             Dict row := Etc.emptyDict()
             
@@ -549,13 +567,29 @@ class KnxConn : Conn
     log.info("KNX Connection::onPing")
     
     KNXResponse? response := connection.search()
+    DIBDevice? dib;
     
     if( response == null )
     {
-       return Etc.makeDict(["connStatus":"fault", "connErr":"Connecting failed"])
+      //description may be unavailable, we should do a search
+      log.info("KNX Connection::onPing description")
+      
+      response = connection.description()
+      
+      if( response == null )
+      {
+        log.info("KNX Connection::onPing description error")
+        return Etc.makeDict(["connStatus":"fault", "connErr":"Connecting failed"])
+      }
+      else
+      {
+        dib = response.getPayloadAt(0) as DIBDevice
+      }
     }
-    
-    DIBDevice? dib := response.getPayloadAt(1) as DIBDevice
+    else
+    {
+      dib = response.getPayloadAt(1) as DIBDevice
+    }
     
     ByteArray address := connection.getKNXAddress()
     
